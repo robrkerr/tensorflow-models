@@ -190,6 +190,40 @@ class NumericFeatureType : public FeatureType {
   FeatureValue size_;
 };
 
+// A union used to represent discrete and continuous feature values.
+union FloatFeatureValue {
+ public:
+  explicit FloatFeatureValue(FeatureValue v) : discrete_value(v) {}
+  FloatFeatureValue(uint32 i, float w) : id(i), weight(w) {}
+  FeatureValue discrete_value;
+  struct {
+    uint32 id;
+    float weight;
+  };
+};
+
+// A simple wrapper FeatureType that adds a special "<ROOT>" type.
+class RootFeatureType : public FeatureType {
+ public:
+  // Creates a RootFeatureType that wraps a given type and adds the special
+  // "<ROOT>" value in root_value.
+  RootFeatureType(const string &name, const FeatureType &wrapped_type,
+                  int root_value);
+
+  // Returns the feature value name, but with the special "<ROOT>" value.
+  string GetFeatureValueName(FeatureValue value) const override;
+
+  // Returns the original number of features plus one for the "<ROOT>" value.
+  FeatureValue GetDomainSize() const override;
+
+ private:
+  // A wrapped type that handles everything else besides "<ROOT>".
+  const FeatureType &wrapped_type_;
+
+  // The reserved root value.
+  int root_value_;
+};
+
 }  // namespace syntaxnet
 
 #endif  // SYNTAXNET_FEATURE_TYPES_H_

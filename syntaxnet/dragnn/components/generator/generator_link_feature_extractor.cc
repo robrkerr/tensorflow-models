@@ -6,7 +6,7 @@ namespace syntaxnet {
 namespace dragnn {
 
 void GeneratorLinkFeatureExtractor::Setup(TaskContext *context) {
-  ParserEmbeddingFeatureExtractor::Setup(context);
+  GeneratorEmbeddingFeatureExtractor::Setup(context);
 
   if (NumEmbeddings() > 0) {
     channel_sources_ = utils::Split(

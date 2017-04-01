@@ -23,9 +23,9 @@ namespace dragnn {
 //
 // Because it uses a different prefix, it can be executed in the same wf.stage
 // as the regular fixed extractor.
-class GeneratorLinkFeatureExtractor : public ParserEmbeddingFeatureExtractor {
+class GeneratorLinkFeatureExtractor : public GeneratorEmbeddingFeatureExtractor {
  public:
-  GeneratorLinkFeatureExtractor() : ParserEmbeddingFeatureExtractor("link") {}
+  GeneratorLinkFeatureExtractor() : GeneratorEmbeddingFeatureExtractor("link") {}
   ~GeneratorLinkFeatureExtractor() override {}
 
   const string ArgPrefix() const override { return "link"; }

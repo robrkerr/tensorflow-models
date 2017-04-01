@@ -136,14 +136,21 @@ void GeneratorComponent::InitializeComponent(const ComponentSpec &spec) {
 
   // Set up the underlying transition system.
   transition_system_.reset(GeneratorTransitionSystem::Create(
-      context.Get("parser_transition_system", "arc-standard")));
+      context.Get("parser_transition_system", "generator")));
   transition_system_->Setup(&context);
   transition_system_->Init(&context);
 
   // Create label map.
-  string path = TaskContext::InputFile(*context.GetInput("label-map"));
-  label_map_ =
-      SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(path, 0, 0);
+  string label_map_path = TaskContext::InputFile(*context.GetInput("label-map"));
+  label_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(label_map_path, 0, 0);
+
+  // Create tag map.
+  string tag_map_path = TaskContext::InputFile(*context.GetInput("tag-map"));
+  tag_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(tag_map_path, 0, 0);
+
+  // Create word map.
+  string word_map_path = TaskContext::InputFile(*context.GetInput("word-map"));
+  word_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(word_map_path, 0, 0);
 
   // Set up link feature extractors.
   if (spec.linked_feature_size() > 0) {
@@ -161,8 +168,7 @@ std::unique_ptr<Beam<GeneratorTransitionState>> GeneratorComponent::CreateBeam(
     int max_size) {
   std::unique_ptr<Beam<GeneratorTransitionState>> beam(
       new Beam<GeneratorTransitionState>(max_size));
-  auto permission_function = [this](GeneratorTransitionState *state,
-                                    int action) {
+  auto permission_function = [this](GeneratorTransitionState *state, int action) {
     VLOG(3) << "permission_function action:" << action
             << " is_allowed:" << this->IsAllowed(state, action);
     return this->IsAllowed(state, action);
@@ -323,7 +329,7 @@ void GeneratorComponent::AdvanceFromPrediction(const float transition_matrix[],
                                                int transition_matrix_length) {
   VLOG(2) << "Advancing from prediction.";
   int matrix_index = 0;
-  int num_labels = transition_system_->NumActions(label_map_->Size());
+  int num_labels = transition_system_->NumActions();
   for (int i = 0; i < batch_.size(); ++i) {
     int max_beam_size = batch_.at(i)->max_size();
     int matrix_size = num_labels * max_beam_size;
@@ -334,6 +340,13 @@ void GeneratorComponent::AdvanceFromPrediction(const float transition_matrix[],
     }
     matrix_index += num_labels * max_beam_size;
   }
+}
+
+void GeneratorComponent::AdvanceFromOracle() {
+  // VLOG(2) << "Advancing from oracle.";
+  // for (auto &beam : batch_) {
+  //   beam->AdvanceFromOracle();
+  // }
 }
 
 bool GeneratorComponent::IsTerminal() const {
@@ -374,7 +387,7 @@ int GeneratorComponent::GetFixedFeatures(
       auto state = beam->beam_state(beam_idx);
       const std::vector<std::vector<SparseFeatures>> sparse_features =
           feature_extractor_.ExtractSparseFeatures(
-              *(state->sentence()->workspace()), *(state->parser_state()));
+              *(state->sentence()->workspace()), *(state->generator_state()));
 
       // Hold the SparseFeatures for later processing.
       for (const SparseFeatures &f : sparse_features[channel_id]) {
@@ -428,8 +441,8 @@ int GeneratorComponent::GetFixedFeatures(
   return feature_count;
 }
 
-// int GeneratorComponent::BulkGetFixedFeatures(
-//     const BulkFeatureExtractor &extractor) {
+int GeneratorComponent::BulkGetFixedFeatures(
+    const BulkFeatureExtractor &extractor) {
 //   // Allocate a vector of SparseFeatures per channel.
 //   const int num_channels = spec_.fixed_feature_size();
 //   std::vector<int> channel_size(num_channels);
@@ -492,41 +505,41 @@ int GeneratorComponent::GetFixedFeatures(
 //     AdvanceFromOracle();
 //     ++step_count;
 //   }
-
-  const int total_steps = step_count;
-  const int num_elements = batch_.size() * max_beam_size_;
-
-  // This would be a good place to add threading.
-  for (int channel_id = 0; channel_id < num_channels; ++channel_id) {
-    int feature_count = feature_counts[channel_id];
-    LOG(INFO) << "Feature count is " << feature_count << " for channel "
-              << channel_id;
-    int32 *indices_tensor =
-        extractor.AllocateIndexMemory(channel_id, feature_count);
-    int64 *ids_tensor = extractor.AllocateIdMemory(channel_id, feature_count);
-    float *weights_tensor =
-        extractor.AllocateWeightMemory(channel_id, feature_count);
-    int array_index = 0;
-    for (int feat_idx = 0; feat_idx < features[channel_id].size(); ++feat_idx) {
-      const auto &feature = features[channel_id][feat_idx];
-      int element_index = element_indices[channel_id][feat_idx];
-      int step_index = step_indices[channel_id][feat_idx];
-      int feature_index = feature_indices[channel_id][feat_idx];
-      for (int sub_idx = 0; sub_idx < feature.id_size(); ++sub_idx) {
-        indices_tensor[array_index] =
-            extractor.GetIndex(total_steps, num_elements, feature_index,
-                               element_index, step_index);
-        ids_tensor[array_index] = feature.id(sub_idx);
-        if (sub_idx < feature.weight_size()) {
-          weights_tensor[array_index] = feature.weight(sub_idx);
-        } else {
-          weights_tensor[array_index] = 1.0;
-        }
-        ++array_index;
-      }
-    }
-  }
-  return step_count;
+//
+//   const int total_steps = step_count;
+//   const int num_elements = batch_.size() * max_beam_size_;
+//
+//   // This would be a good place to add threading.
+//   for (int channel_id = 0; channel_id < num_channels; ++channel_id) {
+//     int feature_count = feature_counts[channel_id];
+//     LOG(INFO) << "Feature count is " << feature_count << " for channel "
+//               << channel_id;
+//     int32 *indices_tensor =
+//         extractor.AllocateIndexMemory(channel_id, feature_count);
+//     int64 *ids_tensor = extractor.AllocateIdMemory(channel_id, feature_count);
+//     float *weights_tensor =
+//         extractor.AllocateWeightMemory(channel_id, feature_count);
+//     int array_index = 0;
+//     for (int feat_idx = 0; feat_idx < features[channel_id].size(); ++feat_idx) {
+//       const auto &feature = features[channel_id][feat_idx];
+//       int element_index = element_indices[channel_id][feat_idx];
+//       int step_index = step_indices[channel_id][feat_idx];
+//       int feature_index = feature_indices[channel_id][feat_idx];
+//       for (int sub_idx = 0; sub_idx < feature.id_size(); ++sub_idx) {
+//         indices_tensor[array_index] =
+//             extractor.GetIndex(total_steps, num_elements, feature_index,
+//                                element_index, step_index);
+//         ids_tensor[array_index] = feature.id(sub_idx);
+//         if (sub_idx < feature.weight_size()) {
+//           weights_tensor[array_index] = feature.weight(sub_idx);
+//         } else {
+//           weights_tensor[array_index] = 1.0;
+//         }
+//         ++array_index;
+//       }
+//     }
+//   }
+//   return step_count;
 }
 
 std::vector<LinkFeatures> GeneratorComponent::GetRawLinkFeatures(
@@ -549,7 +562,7 @@ std::vector<LinkFeatures> GeneratorComponent::GetRawLinkFeatures(
       std::vector<FeatureVector> raw_features(
           link_feature_extractor_.NumEmbeddings());
       link_feature_extractor_.ExtractFeatures(*(state->sentence()->workspace()),
-                                              *(state->parser_state()),
+                                              *(state->generator_state()),
                                               &raw_features);
 
       // Add the raw feature values to the LinkFeatures proto.
@@ -582,7 +595,7 @@ void GeneratorComponent::FinalizeData() {
       auto top_state = beam->beam_state(0);
       VLOG(3) << "Finalizing for sentence: "
               << top_state->sentence()->sentence()->ShortDebugString();
-      top_state->parser_state()->AddParseToDocument(
+      top_state->generator_state()->CreateDocument(
           top_state->sentence()->sentence(), rewrite_root_labels_);
       VLOG(3) << "Sentence is now: "
               << top_state->sentence()->sentence()->ShortDebugString();
@@ -605,48 +618,48 @@ std::unique_ptr<GeneratorTransitionState> GeneratorComponent::CreateState(
     SyntaxNetSentence *sentence) {
   VLOG(3) << "Creating state for sentence "
           << sentence->sentence()->DebugString();
-  std::unique_ptr<ParserState> parser_state(new ParserState(
+  std::unique_ptr<GeneratorState> generator_state(new GeneratorState(
       sentence->sentence(), transition_system_->NewTransitionState(false),
-      label_map_));
+      label_map_, tag_map_, word_map_));
   sentence->workspace()->Reset(workspace_registry_);
-  feature_extractor_.Preprocess(sentence->workspace(), parser_state.get());
-  link_feature_extractor_.Preprocess(sentence->workspace(), parser_state.get());
+  feature_extractor_.Preprocess(sentence->workspace(), generator_state.get());
+  link_feature_extractor_.Preprocess(sentence->workspace(), generator_state.get());
   std::unique_ptr<GeneratorTransitionState> transition_state(
-      new GeneratorTransitionState(std::move(parser_state), sentence));
+      new GeneratorTransitionState(std::move(generator_state), sentence));
   return transition_state;
 }
 
 bool GeneratorComponent::IsAllowed(GeneratorTransitionState *state,
                                    int action) const {
-  return transition_system_->IsAllowedAction(action, *(state->parser_state()));
+  return transition_system_->IsAllowedAction(action, *(state->generator_state()));
 }
 
 bool GeneratorComponent::IsFinal(GeneratorTransitionState *state) const {
-  return transition_system_->IsFinalState(*(state->parser_state()));
+  return transition_system_->IsFinalState(*(state->generator_state()));
 }
 
 void GeneratorComponent::Advance(GeneratorTransitionState *state, int action,
                                  Beam<GeneratorTransitionState> *beam) {
-  auto parser_state = state->parser_state();
+  auto generator_state = state->generator_state();
   auto sentence_size = state->sentence()->sentence()->token_size();
   const int num_steps = beam->num_steps();
 
   if (transition_system_->SupportsActionMetaData()) {
     const int parent_idx =
-        transition_system_->ParentIndex(*parser_state, action);
+        transition_system_->ParentIndex(*generator_state, action);
     constexpr int kShiftAction = -1;
     if (parent_idx == kShiftAction) {
-      if (parser_state->Next() < sentence_size && parser_state->Next() >= 0) {
+      if (generator_state->Next() < sentence_size && generator_state->Next() >= 0) {
         // if we have already consumed all the input then it is not a shift
         // action. We just skip it.
-        state->set_step_for_token(parser_state->Next(), num_steps);
+        state->set_step_for_token(generator_state->Next(), num_steps);
       }
     } else if (parent_idx >= 0) {
       VLOG(2) << spec_.name() << ": Updating pointer: " << parent_idx << " -> "
               << num_steps;
       state->set_step_for_token(parent_idx, num_steps);
       const int child_idx =
-          transition_system_->ChildIndex(*parser_state, action);
+          transition_system_->ChildIndex(*generator_state, action);
       assert(child_idx >= 0 && child_idx < sentence_size);
       state->set_parent_for_token(child_idx, parent_idx);
 
@@ -663,16 +676,29 @@ void GeneratorComponent::Advance(GeneratorTransitionState *state, int action,
 
     // Add action to the prior step.
     last_step->set_caption(
-        transition_system_->ActionAsString(action, *parser_state));
+        transition_system_->ActionAsString(action, *generator_state));
     last_step->set_step_finished(true);
   }
 
-  transition_system_->PerformAction(action, parser_state);
+  transition_system_->PerformAction(action, generator_state);
 
   if (do_tracing_) {
     // Add info for the next step.
     *state->mutable_trace()->add_step_trace() = GetNewStepTrace(spec_, *state);
   }
+}
+
+std::vector<std::vector<int>> GeneratorComponent::GetOracleLabels() const {
+  std::vector<std::vector<int>> oracle_labels;
+  // for (const auto &beam : batch_) {
+  //   oracle_labels.emplace_back();
+  //   for (int beam_idx = 0; beam_idx < beam->size(); ++beam_idx) {
+  //     // Get the raw link features from the linked feature extractor.
+  //     auto state = beam->beam_state(beam_idx);
+  //     oracle_labels.back().push_back(GetOracleLabel(state));
+  //   }
+  // }
+  return oracle_labels;
 }
 
 void GeneratorComponent::InitializeTracing() {

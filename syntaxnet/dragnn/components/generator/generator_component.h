@@ -70,6 +70,9 @@ class GeneratorComponent : public Component {
   void AdvanceFromPrediction(const float transition_matrix[],
                              int transition_matrix_length) override;
 
+  // Advances this component from the state oracles.
+  void AdvanceFromOracle() override;
+
   // Returns true if all states within this component are terminal.
   bool IsTerminal() const override;
 
@@ -83,9 +86,18 @@ class GeneratorComponent : public Component {
                        std::function<float *(int)> allocate_weights,
                        int channel_id) const override;
 
+  // Extracts and populates all FixedFeatures for all channels, advancing this
+  // component via the oracle until it is terminal. This call uses a
+  // BulkFeatureExtractor object to contain the functors and other information.
+  int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override;
+
   // Extracts and returns the vector of LinkFeatures for the specified
   // channel. Note: these are NOT translated.
   std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override;
+
+  // Returns a vector of oracle labels for each element in the beam and
+  // batch.
+  std::vector<std::vector<int>> GetOracleLabels() const override;
 
   // Annotate the underlying data object with the results of this Component's
   // calculation.
@@ -135,8 +147,14 @@ class GeneratorComponent : public Component {
   // Label map for transition system.
   const TermFrequencyMap *label_map_;
 
+  // Tag map for transition system.
+  const TermFrequencyMap *tag_map_;
+
+  // Word map for transition system.
+  const TermFrequencyMap *word_map_;
+
   // Extractor for fixed features
-  ParserEmbeddingFeatureExtractor feature_extractor_;
+  GeneratorEmbeddingFeatureExtractor feature_extractor_;
 
   // Extractor for linked features.
   GeneratorLinkFeatureExtractor link_feature_extractor_;

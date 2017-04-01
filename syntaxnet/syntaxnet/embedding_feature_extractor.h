@@ -24,6 +24,7 @@ limitations under the License.
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/parser_features.h"
+#include "syntaxnet/generator_features.h"
 #include "syntaxnet/sentence_features.h"
 #include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_context.h"
@@ -219,6 +220,19 @@ class ParserEmbeddingFeatureExtractor
     : public EmbeddingFeatureExtractor<ParserFeatureExtractor, ParserState> {
  public:
   explicit ParserEmbeddingFeatureExtractor(const string &arg_prefix)
+      : arg_prefix_(arg_prefix) {}
+
+ private:
+  const string ArgPrefix() const override { return arg_prefix_; }
+
+  // Prefix for context parameters.
+  string arg_prefix_;
+};
+
+class GeneratorEmbeddingFeatureExtractor
+    : public EmbeddingFeatureExtractor<GeneratorFeatureExtractor, GeneratorState> {
+ public:
+  explicit GeneratorEmbeddingFeatureExtractor(const string &arg_prefix)
       : arg_prefix_(arg_prefix) {}
 
  private:

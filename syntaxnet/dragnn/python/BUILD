@@ -361,6 +361,18 @@ py_library(
     ],
 )
 
+py_library(
+    name = "generator_spec_builder",
+    srcs = ["generator_spec_builder.py"],
+    deps = [
+        ":lexicon",
+        "//dragnn/protos:spec_py_pb2",
+        "//syntaxnet:parser_ops",
+        "//syntaxnet/util:check",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
 py_test(
     name = "spec_builder_test",
     srcs = ["spec_builder_test.py"],

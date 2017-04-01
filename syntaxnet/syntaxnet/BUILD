@@ -374,10 +374,12 @@ cc_library(
     name = "generator_transitions",
     srcs = [
         "generator_transitions.cc",
+        "generator_features.cc",
         "generator_state.cc",
     ],
     hdrs = [
         "generator_state.h",
+        "generator_features.h",
         "generator_transitions.h",
     ],
     deps = [
@@ -421,6 +423,7 @@ cc_library(
     deps = [
         ":feature_extractor",
         ":parser_transitions",
+        ":generator_transitions",
         ":sentence_features",
         ":sparse_proto",
         ":task_context",
