@@ -5,7 +5,7 @@
 # not actually build any of SyntaxNet, but instead mounts it in a volume.
 
 script_path="$(readlink -f "$0")"
-root_path="$(dirname "$(dirname "${script_path}")")"
+root_path=`realpath "$(dirname "$(dirname "${script_path}")")"`
 set -e
 
 if [[ -z "$(docker images -q dragnn-oss)" ]]; then
@@ -16,7 +16,7 @@ else
 fi
 
 echo -e "\n\nRun bazel commands like \`bazel test syntaxnet/...\`"
-
+echo $root_path
 # NOTE: Unfortunately, we need to mount /tensorflow over /syntaxnet/tensorflow
 # (which happens via devel_entrypoint.sh). This requires privileged mode.
 syntaxnet_base="/opt/tensorflow/syntaxnet"

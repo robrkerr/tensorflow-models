@@ -15,10 +15,31 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "dragnn_cc_impl_generator.so",
+    linkopts = select({
+        "//conditions:default": ["-lm"],
+        "@org_tensorflow//tensorflow:darwin": [],
+    }),
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        "//dragnn/components/generator:generator_component",
+        "//dragnn/core:dragnn_bulk_ops_cc",
+        "//dragnn/core:dragnn_ops_cc",
+    ],
+)
+
 py_library(
     name = "load_dragnn_cc_impl_py",
     srcs = ["load_dragnn_cc_impl.py"],
     data = [":dragnn_cc_impl.so"],
+)
+
+py_library(
+    name = "load_dragnn_cc_impl_generator_py",
+    srcs = ["load_dragnn_cc_impl_generator.py"],
+    data = [":dragnn_cc_impl_generator.so"],
 )
 
 py_library(
@@ -301,6 +322,16 @@ py_test(
 py_library(
     name = "evaluation",
     srcs = ["evaluation.py"],
+    deps = [
+        "//syntaxnet:sentence_py_pb2",
+        "//syntaxnet/util:check",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "generation",
+    srcs = ["generation.py"],
     deps = [
         "//syntaxnet:sentence_py_pb2",
         "//syntaxnet/util:check",

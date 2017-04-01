@@ -57,12 +57,13 @@ class GeneratorState {
   // Returns the number of possible labels.
   int NumLabels() const;
 
-  // Returns the number of tokens in the sentence.
-  int NumTokens() const { return num_tokens_; }
+  int Next() const;
 
-  // Returns the token index relative to the next input token. If no such token
-  // exists, returns -2.
-  int Input(int offset) const;
+  void Advance();
+  void Advance(int next);
+
+  // Returns the number of tokens in the sentence.
+  int NumTokens() const { return head_.size(); }
 
   // Pushes an element to the stack.
   void Push(int index);
@@ -111,10 +112,10 @@ class GeneratorState {
   // returns -2.
   int RightSibling(int index, int n) const;
 
-  bool MissingWord();
+  bool MissingWord() const;
 
-  // Adds an arc to the partial dependency tree of the state.
-  void AddArc(int index, int head, int label);
+  void Add(int label, int tag);
+  void AddWord(int word);
 
   // Get a reference to the underlying token at index. Returns an empty default
   // Token if accessing the root.

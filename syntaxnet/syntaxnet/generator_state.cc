@@ -44,15 +44,15 @@ GeneratorState::GeneratorState(Sentence *sentence,
 GeneratorState::~GeneratorState() { delete transition_state_; }
 
 GeneratorState *GeneratorState::Clone() const {
-  GeneratorState *new_state = new GeneratorState();
-  new_state->sentence_ = sentence_;
-  new_state->alternative_ = alternative_;
-  new_state->transition_state_ =
-      (transition_state_ == nullptr ? nullptr : transition_state_->Clone());
-  new_state->label_map_ = label_map_;
-  new_state->tag_map_ = tag_map_;
-  new_state->word_map_ = word_map_;
+  GeneratorState *new_state = new GeneratorState(
+    sentence_,
+    (transition_state_ == nullptr ? nullptr : transition_state_->Clone()),
+    label_map_,
+    tag_map_,
+    word_map_
+  );
   new_state->root_label_ = root_label_;
+  new_state->alternative_ = alternative_;
   new_state->next_ = next_;
   new_state->stack_.assign(stack_.begin(), stack_.end());
   new_state->head_.assign(head_.begin(), head_.end());
@@ -150,7 +150,7 @@ int GeneratorState::RightmostChild(int index, int n) const {
     // Find the rightmost child by scanning backward from end until a child
     // is encountered.
     int i;
-    for (i = num_tokens_ - 1; i > index; --i) {
+    for (i = (int)(head_.size() - 1); i > index; --i) {
       if (Head(i) == index) break;
     }
     if (i == index) return -2;
@@ -181,29 +181,29 @@ int GeneratorState::RightSibling(int index, int n) const {
   int i = index;
   while (n > 0) {
     ++i;
-    if (i == num_tokens_) return -2;
+    if (i == (int)(head_.size())) return -2;
     if (Head(i) == Head(index)) --n;
   }
   return i;
 }
 
-bool GeneratorState::MissingWord() {
-  return _head.size() > _word.size()
+bool GeneratorState::MissingWord() const {
+  return head_.size() > word_.size();
 }
 
 void GeneratorState::Add(int label, int tag) {
   CHECK(StackSize() > 1);
   int s0 = stack_.back();
-  stack_.push(next_);
-  head_.push(s0);
-  label_.push(label);
-  tag_.push(tag);
+  stack_.push_back(next_);
+  head_.push_back(s0);
+  label_.push_back(label);
+  tag_.push_back(tag);
   ++next_;
 }
 
 void GeneratorState::AddWord(int word) {
   CHECK(StackSize() > 1);
-  word_.push(word);
+  word_.push_back(word);
 }
 
 void GeneratorState::CreateDocument(Sentence *sentence,

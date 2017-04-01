@@ -15,6 +15,20 @@ py_binary(
 )
 
 py_binary(
+    name = "generator",
+    srcs = ["generator.py"],
+    tags = [
+        "notap",
+        "optonly",
+    ],
+    deps = [
+        ":components",
+        "//dragnn/python:generation",
+        "//dragnn/python:spec_builder",
+    ],
+)
+
+py_binary(
     name = "segmenter-evaluator",
     srcs = ["segmenter-evaluator.py"],
     tags = [

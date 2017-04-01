@@ -371,6 +371,35 @@ cc_library(
 )
 
 cc_library(
+    name = "generator_transitions",
+    srcs = [
+        "generator_transitions.cc",
+        "generator_state.cc",
+    ],
+    hdrs = [
+        "generator_state.h",
+        "generator_transitions.h",
+    ],
+    deps = [
+        ":base",
+        ":feature_extractor",
+        ":morphology_label_set",
+        ":registry",
+        ":segmenter_utils",
+        ":sentence_features",
+        ":sentence_proto",
+        ":shared_store",
+        ":task_context",
+        ":term_frequency_map",
+        ":utils",
+        ":whole_sentence_features",
+        ":workspace",
+        "@org_tensorflow//tensorflow/core:lib",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
     name = "populate_test_inputs",
     testonly = 1,
     srcs = ["populate_test_inputs.cc"],
